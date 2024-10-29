@@ -1,0 +1,149 @@
+import sqlite3
+import tkinter as tk
+from tkinter import messagebox, scrolledtext, ttk
+
+# Seting up the database
+def setup_database():
+    conn = sqlite3.connect('inventory.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            quantity INTEGER NOT NULL,
+            price REAL NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+#  application classes
+class InventoryApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Inventory Management System")
+
+        # Entry variables
+        self.name_var = tk.StringVar()
+        self.description_var = tk.StringVar()
+        self.quantity_var = tk.IntVar()
+        self.price_var = tk.DoubleVar()
+
+        # Create userintrfarces
+        self.create_widgets()
+        self.view_products()
+
+    def create_widgets(self):
+        # Labels and Entry fields
+        tk.Label(self.root, text="Name:").grid(row=0, column=0)
+        tk.Entry(self.root, textvariable=self.name_var).grid(row=0, column=1)
+
+        tk.Label(self.root, text="Description:").grid(row=1, column=0)
+        tk.Entry(self.root, textvariable=self.description_var).grid(row=1, column=1)
+
+        tk.Label(self.root, text="Quantity:").grid(row=2, column=0)
+        tk.Entry(self.root, textvariable=self.quantity_var).grid(row=2, column=1)
+
+        tk.Label(self.root, text="Price:").grid(row=3, column=0)
+        tk.Entry(self.root, textvariable=self.price_var).grid(row=3, column=1)
+
+        # Action buttons
+        tk.Button(self.root, text="Add Product", command=self.add_product).grid(row=4, column=0)
+        tk.Button(self.root, text="Update Product", command=self.update_product).grid(row=4, column=1)
+        tk.Button(self.root, text="Delete Product", command=self.delete_product).grid(row=4, column=2)
+
+        # Text area for product display
+        self.text_area = scrolledtext.ScrolledText(self.root, width=50, height=15)
+        self.text_area.grid(row=5, column=0, columnspan=3)
+
+        # Sort options
+        self.sort_var = tk.StringVar()
+        self.sort_combobox = ttk.Combobox(self.root, textvariable=self.sort_var, values=["Name", "Quantity", "Price"])
+        self.sort_combobox.grid(row=6, column=0)
+        self.sort_combobox.bind("<<ComboboxSelected>>", self.sort_products)
+
+        # Total products label
+        self.total_label = tk.Label(self.root, text="Total Products: 0")
+        self.total_label.grid(row=6, column=2)
+
+    def add_product(self):
+        # Get values and validate
+        name = self.name_var.get()
+        description = self.description_var.get()
+        quantity = self.quantity_var.get()
+        price = self.price_var.get()
+
+        if not name or quantity < 0 or price < 0:
+            messagebox.showerror("Input Error", "Enter valid product details.")
+            return
+
+        # Add product to the database
+        conn = sqlite3.connect('inventory.db')
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO products (name, description, quantity, price) VALUES (?, ?, ?, ?)",
+                       (name, description, quantity, price))
+        conn.commit()
+        conn.close()
+        self.view_products()
+
+    def update_product(self):
+        # Functionality to be implemented
+        pass
+
+    def delete_product(self):
+        # Functionality to be implemented
+        pass
+
+    def view_products(self):
+        conn = sqlite3.connect('inventory.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM products")
+        products = cursor.fetchall()
+        conn.close()
+
+        self.text_area.delete(1.0, tk.END)
+        for product in products:
+            self.text_area.insert(tk.END,
+                                  f"ID: {product[0]}\n"
+                                  f"Name: {product[1]}\n"
+                                  f"Description: {product[2]}\n"
+                                  f"Quantity: {product[3]}\n"
+                                  f"Price: $ {product[4]}\n"
+                                  "----------------------------------------\n")
+        self.total_label.config(text=f"Total Products: {len(products)}")
+
+    def sort_products(self, event):
+        sort_by = self.sort_var.get().lower()
+        order = "ASC"
+        self.view_sorted_products(sort_by, order)
+
+    def view_sorted_products(self, column, order):
+        conn = sqlite3.connect('inventory.db')
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM products ORDER BY {column} {order}")
+        products = cursor.fetchall()
+        conn.close()
+
+        self.text_area.delete(1.0, tk.END)
+        for product in products:
+            self.text_area.insert(tk.END,
+                                  f"ID: {product[0]}\n"
+                                  f"Name: {product[1]}\n"
+                                  f"Description: {product[2]}\n"
+                                  f"Quantity: {product[3]}\n"
+                                  f"Price: ${product[4]}\n"
+                                  "----------------------------------------\n")
+        self.total_label.config(text=f"Total Products: {len(products)}")
+
+# Initializationg  the database and tkinter app
+setup_database()
+conn = sqlite3.connect('inventory.db')
+cursor = conn.cursor()
+cursor.execute("DELETE FROM products")
+conn.commit()
+conn.close()
+
+root = tk.Tk()
+app = InventoryApp(root)
+root.mainloop()
